@@ -29,3 +29,13 @@ export function buildHash(name, id) {
   if (name === 'settings' || name === 'helper') return `#/${name}`;
   return `#/${name}/${encodeURIComponent(id)}`;
 }
+
+/**
+ * Query flags after "?" in the hash, e.g. "#/play/abc?restart=1&preview=1".
+ * @param {string} hash
+ * @returns {URLSearchParams}
+ */
+export function hashQuery(hash) {
+  const i = (hash || '').indexOf('?');
+  return new URLSearchParams(i === -1 ? '' : hash.slice(i + 1));
+}

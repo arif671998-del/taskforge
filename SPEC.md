@@ -26,6 +26,7 @@ Plain Steps is a guide, not an automation. It never touches the other app.
 - Empty state in plain words explaining that a helper needs to set up a guide.
 - At the bottom, a smaller **Helper: set up guides** button. Entering helper mode shows a simple confirm ("This part is for the helper. Continue?") so the person doesn't edit guides by accident.
 - **Settings** button.
+- **Independence nudge:** after 3 completed runs of a guide with zero stuck presses, the card shows a gentle "You've done this on your own 3 times. Try it from memory?" with a **Keep using the guide** option. No pressure, and the guide is never hidden.
 
 ### 3.2 Builder (helper mode)
 - Guide fields: title, helper's name, helper's WhatsApp number (country code defaults to +91; store digits only; validate), guide content language (English / Hindi).
@@ -34,19 +35,23 @@ Plain Steps is a guide, not an automation. It never touches the other app.
   - **Photo** (optional): `<input type="file" accept="image/*" capture="environment">`, so camera or gallery. Downscale to max 1280px on the longest side, JPEG ~0.8 quality, before saving.
   - **Photo description** (optional) used as alt text; default alt is "Photo for step N".
   - **Voice note** (optional, max 60 s) via MediaRecorder: record / stop / play / delete, with clear visible states. Pick a supported MIME type at runtime (webm or mp4). Handle a denied mic permission with a plain-language message.
+  - **Press-here marker** (needs a photo): the helper taps the photo to place one marker, taps elsewhere to move it, or removes it. Stored as x/y percentages so it survives resizing. Keyboard and screen-reader users can place it with Enter and move it with arrow keys or the Marker left/right/up/down buttons. The photo's alt text gets a suffix such as "Marked: press here".
+  - **What you should see now** (optional text): the expected result after the step.
   - **Caution** flag: shows the step in a distinct warning style and reads it first (e.g. "Never tell anyone this code").
 - Reorder with **Move up / Move down** buttons (no drag-only interaction). Delete with confirmation.
 - **Sensitive-content warning:** if step text contains words like password, PIN, OTP, CVV, UPI PIN, पासवर्ड, पिन, ओटीपी, or a long run of digits, show a gentle inline warning: never write passwords, PINs or OTPs into a guide. Warn only; don't block.
 - **Preview** button opens the player for this guide.
+- **Unsaved-changes guard:** confirm before leaving through an in-app link or the browser Back button, plus a `beforeunload` warning, while there are unsaved edits.
 - Export / share and import (see 3.7). Activity (see 3.6). Delete guide with confirmation.
 
 ### 3.3 Player (the heart of the app)
 One step per screen, top to bottom:
 1. Small top bar: **Exit** (keeps progress) and the guide title.
 2. "Step 3 of 8" plus a progress bar.
-3. Photo, if any. Tap to open full-screen, with a visible close button.
+3. Photo, if any, with a high-contrast ring at the helper's marker (it pulses unless `prefers-reduced-motion` is set). Tap to open full-screen, with a visible close button.
 4. Step text, large (at least 28px at default size), with a `lang` attribute matching the guide language.
 5. Caution banner, if flagged.
+5b. If the step has "what you should see now": show it with **Do you see this?** and **Yes** (go to the next step) and **No** (open the stuck sheet and log a stuck event with reason `mismatch`; the WhatsApp message then also says what the person expected to see). It is read aloud after the step text.
 6. **Read aloud** button (speechSynthesis, `hi-IN` or `en-IN`). If the helper recorded a voice note, show **Play [helper]'s voice** as well and prefer it for auto-read.
 7. Action bar: **Back** (secondary), **Done, next** (primary and largest), **I'm stuck** (distinct colour, always visible).
 
@@ -65,11 +70,12 @@ Behaviour:
 
 ### 3.5 Done screen
 - "You did it!" with time taken.
-- **Tell {helper} it's done** (WhatsApp) and **Back to home**.
+- **Tell {helper} it's done** (WhatsApp), **Send report to helper** (WhatsApp, see 3.6) and **Back to home**.
 
 ### 3.6 Activity (helper mode, per guide)
 - Runs stored on this device: start, end, completed or not, time per step, stuck events.
 - Show: number of runs, completed runs, typical time, and the step with the most "I'm stuck" presses, with a hint such as "Step 4 caused trouble 3 times. Consider rewriting it" and a link straight to that step in the builder.
+- **Send report to helper** (WhatsApp), also available from the Done screen: guide title, finished or not, time taken, and the steps with stuck presses. Plain language, in the UI language.
 - **Clear activity** with confirmation.
 - This view is how I'll measure the before/after for the Devpost story, so make the numbers accurate.
 
@@ -94,9 +100,11 @@ Behaviour:
 
 ```
 Guide    { id, title, helperName, helperPhone, language: "en"|"hi", steps: Step[], isSample, createdAt, updatedAt }
-Step     { id, text, photo: Blob|null, photoAlt, audio: Blob|null, caution: boolean }
+Step     { id, text, photo: Blob|null, photoAlt, marker: {x, y}|null, audio: Blob|null, caution: boolean, expected: string }
+           marker   = "press here" point in percent (0-100) of the photo's width/height; null if none
+           expected = optional "what you should see now" text ('' if none)
 Progress { guideId, runId, stepIndex, updatedAt }
-Run      { id, guideId, startedAt, endedAt|null, completed, stepTimesMs: number[], stuck: [{ stepIndex, at }] }
+Run      { id, guideId, startedAt, endedAt|null, completed, stepTimesMs: number[], stuck: [{ stepIndex, at, reason?: "mismatch" }] }
 ```
 
 Settings live in localStorage, with every read and write wrapped in try/catch and sensible defaults when it's unavailable.

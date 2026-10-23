@@ -36,3 +36,8 @@ test('splitDuration', () => {
   assert.deepEqual(splitDuration(125000), { m: 2, s: 5 });
   assert.deepEqual(splitDuration(60000), { m: 1, s: 0 });
 });
+
+test('a "No, I do not see it" answer is a stuck event with a reason', () => {
+  const r = addStuck(addStuck(startRun('g', 2, 0), 0, 5), 1, 9, 'mismatch');
+  assert.deepEqual(r.stuck, [{ stepIndex: 0, at: 5 }, { stepIndex: 1, at: 9, reason: 'mismatch' }]);
+});

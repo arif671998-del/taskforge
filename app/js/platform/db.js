@@ -7,6 +7,8 @@
  * Meta     { key, value }
  */
 
+import { normalizeGuide } from '../lib/guide.js';
+
 const DB_NAME = 'plainsteps';
 const DB_VERSION = 1;
 
@@ -73,9 +75,12 @@ const put = (store, value) => withTx([store], 'readwrite', (tx) => { tx.objectSt
 /** All guides, oldest first so the order on Home is stable. */
 export async function listGuides() {
   const guides = await getAll('guides');
-  return guides.sort((a, b) => a.createdAt - b.createdAt);
+  return guides.map(normalizeGuide).sort((a, b) => a.createdAt - b.createdAt);
 }
-export const getGuide = (id) => get('guides', id);
+export async function getGuide(id) {
+  const guide = await get('guides', id);
+  return guide && normalizeGuide(guide);
+}
 export const saveGuide = (guide) => put('guides', { ...guide, updatedAt: Date.now() });
 
 /** Delete a guide together with its progress and runs. */

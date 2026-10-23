@@ -1,6 +1,6 @@
 /**
  * Run bookkeeping (pure). A Run is one attempt at a guide:
- * { id, guideId, startedAt, endedAt, completed, stepTimesMs, stuck: [{ stepIndex, at }] }
+ * { id, guideId, startedAt, endedAt, completed, stepTimesMs, stuck: [{ stepIndex, at, reason? }] }
  *
  * Step times count only the time the step was on screen and the app was in the foreground.
  */
@@ -29,9 +29,16 @@ export function addStepTime(run, index, ms) {
   return { ...run, stepTimesMs: times };
 }
 
-/** @returns {object} a new run with a stuck event recorded */
-export function addStuck(run, stepIndex, now = Date.now()) {
-  return { ...run, stuck: [...run.stuck, { stepIndex, at: now }] };
+/**
+ * @param {object} run
+ * @param {number} stepIndex
+ * @param {number} [now]
+ * @param {'mismatch'} [reason] set when the person answered "No" to "Do you see this?"
+ * @returns {object} a new run with a stuck event recorded
+ */
+export function addStuck(run, stepIndex, now = Date.now(), reason) {
+  const event = reason ? { stepIndex, at: now, reason } : { stepIndex, at: now };
+  return { ...run, stuck: [...run.stuck, event] };
 }
 
 /** @returns {object} a completed run */

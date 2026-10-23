@@ -2,7 +2,9 @@
  * Guide data helpers (pure, no DOM, no storage).
  *
  * Guide { id, title, helperName, helperPhone, language, steps, isSample, createdAt, updatedAt }
- * Step  { id, text, photo, photoAlt, audio, caution }
+ * Step  { id, text, photo, photoAlt, marker, audio, caution, expected }
+ *   marker   { x, y } in percent of the photo, or null (see marker.js)
+ *   expected optional "what you should see now" text, '' when not set
  */
 import { normalizePhone } from './phone.js';
 
@@ -10,6 +12,7 @@ export const MAX_TITLE = 100;
 export const MAX_NAME = 60;
 export const MAX_TEXT = 1000;
 export const MAX_STEPS = 50;
+export const MAX_ALT = 300;
 
 /** Random id that also works on plain http (crypto.randomUUID needs a secure context). */
 export function newId() {
@@ -20,7 +23,10 @@ export function newId() {
 
 /** @returns {object} a blank step */
 export function createStep(overrides = {}) {
-  return { id: newId(), text: '', photo: null, photoAlt: '', audio: null, caution: false, ...overrides };
+  return {
+    id: newId(), text: '', photo: null, photoAlt: '', marker: null, audio: null, caution: false, expected: '',
+    ...overrides,
+  };
 }
 
 /**
@@ -41,6 +47,15 @@ export function createGuide(overrides = {}) {
     updatedAt: now,
     ...overrides,
   };
+}
+
+/**
+ * Fill in fields that older saved guides do not have yet.
+ * @param {object} guide
+ * @returns {object}
+ */
+export function normalizeGuide(guide) {
+  return { ...guide, steps: guide.steps.map((s) => ({ marker: null, expected: '', ...s })) };
 }
 
 /**
@@ -80,6 +95,8 @@ export function validateGuide(guide, phoneInput = guide.helperPhone) {
     const text = step.text.trim();
     if (!text) errors.push({ code: 'stepTextRequired', n: i + 1 });
     else if (text.length > MAX_TEXT) errors.push({ code: 'stepTextTooLong', n: i + 1 });
+    if (step.expected && step.expected.trim().length > MAX_TEXT) errors.push({ code: 'expectedTooLong', n: i + 1 });
+    if (step.photoAlt && step.photoAlt.trim().length > MAX_ALT) errors.push({ code: 'altTooLong', n: i + 1 });
   });
   return errors;
 }

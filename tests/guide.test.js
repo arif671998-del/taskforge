@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createGuide, createStep, moveStep, removeStep, validateGuide, newId, MAX_TEXT, MAX_STEPS } from '../app/js/lib/guide.js';
+import { createGuide, createStep, moveStep, removeStep, validateGuide, normalizeGuide, newId, MAX_TEXT, MAX_STEPS } from '../app/js/lib/guide.js';
 import { createSampleGuide } from '../app/js/lib/sample.js';
 
 const withSteps = (...texts) => createGuide({ title: 'T', steps: texts.map((text) => createStep({ text })) });
@@ -48,4 +48,18 @@ test('sample guides are valid in both languages', () => {
     assert.deepEqual(validateGuide(g), []);
   }
   assert.equal(createSampleGuide('xx').language, 'en');
+});
+
+test('new fields have defaults, and old guides are upgraded', () => {
+  const step = createStep();
+  assert.deepEqual([step.marker, step.expected], [null, '']);
+  const old = { title: 'Old', steps: [{ id: 'a', text: 'x', photo: null, photoAlt: '', audio: null, caution: false }] };
+  const fixed = normalizeGuide(old);
+  assert.deepEqual([fixed.steps[0].marker, fixed.steps[0].expected], [null, '']);
+  assert.equal(fixed.steps[0].text, 'x');
+});
+
+test('expected text and alt text are length checked', () => {
+  const g = createGuide({ title: 'T', steps: [createStep({ text: 'ok', expected: 'x'.repeat(MAX_TEXT + 1), photoAlt: 'y'.repeat(301) })] });
+  assert.deepEqual(validateGuide(g, '').map((e) => e.code), ['expectedTooLong', 'altTooLong']);
 });

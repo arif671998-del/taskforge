@@ -10,7 +10,7 @@ const SAMPLES = {
     title: 'Sample: Join a video call',
     steps: [
       { text: 'Open the message from your family. Find the link to the call.' },
-      { text: 'Tap the link once. Wait a few seconds.' },
+      { text: 'Tap the link once. Wait a few seconds.', expected: 'A screen that says Join, or a preview of your own face.' },
       { text: 'If the phone asks to use the camera and microphone, tap Allow.', caution: true },
       { text: 'Tap the big Join button.' },
       { text: 'You can now see your family. If they cannot hear you, check that the microphone is not crossed out.' },
@@ -21,7 +21,7 @@ const SAMPLES = {
     title: 'नमूना: वीडियो कॉल से जुड़ना',
     steps: [
       { text: 'परिवार का भेजा हुआ मैसेज खोलिए। उसमें कॉल का लिंक ढूँढिए।' },
-      { text: 'लिंक पर एक बार दबाइए। कुछ सेकंड रुकिए।' },
+      { text: 'लिंक पर एक बार दबाइए। कुछ सेकंड रुकिए।', expected: 'एक स्क्रीन जिस पर "Join" लिखा हो, या आपके अपने चेहरे की झलक।' },
       { text: 'अगर फ़ोन कैमरा और माइक इस्तेमाल करने की इजाज़त माँगे, तो "Allow" दबाइए।', caution: true },
       { text: 'बड़े "Join" बटन को दबाइए।' },
       { text: 'अब आपको परिवार दिखेगा। अगर उन्हें आपकी आवाज़ न आए, तो देखिए कि माइक पर कटी हुई लाइन तो नहीं है।' },

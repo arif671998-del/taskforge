@@ -47,6 +47,11 @@ async function render({ keepFocus = false } = {}) {
 }
 
 applySettings();
+// The skip link would otherwise change the hash to "#main", which the router reads as a page.
+document.getElementById('skip-link').addEventListener('click', (e) => {
+  e.preventDefault();
+  main.focus();
+});
 await seedSampleOnFirstRun(getSettings().uiLang);
 window.addEventListener('hashchange', () => render());
 // Re-render in place when the language changes; focus stays on the control the user used.

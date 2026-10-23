@@ -5,15 +5,16 @@ import { waLink, telLink, truncate } from '../lib/whatsapp.js';
 /**
  * The "I'm stuck" sheet: a modal with a WhatsApp message that names the exact step,
  * and a call button. Without a helper number it says so and offers nothing that cannot work.
- * @param {{ guide: object, index: number }} opts
+ * @param {{ guide: object, index: number, notSeen?: string }} opts notSeen: the "what you should see" text, when the person answered No
  * @returns {Promise<void>} resolves when the sheet is closed
  */
-export function openStuckSheet({ guide, index }) {
+export function openStuckSheet({ guide, index, notSeen = '' }) {
   return new Promise((resolve) => {
     const total = guide.steps.length;
     const name = guide.helperName.trim();
     const text = truncate(guide.steps[index].text);
-    const message = t(name ? 'waStuck' : 'waStuckNoName', { name, n: index + 1, total, title: guide.title, text });
+    const base = t(name ? 'waStuck' : 'waStuckNoName', { name, n: index + 1, total, title: guide.title, text });
+    const message = notSeen ? `${base} ${t('waNoSee', { expected: truncate(notSeen, 200) })}` : base;
     const wa = waLink(guide.helperPhone, message);
     const tel = telLink(guide.helperPhone);
 

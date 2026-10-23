@@ -10,10 +10,12 @@ import { loadVoices, speak, stopSpeaking, speechSupported } from '../platform/sp
 import { hashQuery, buildHash } from '../lib/route.js';
 import { startRun, fitRun, addStepTime, addStuck, finishRun, totalTimeMs } from '../lib/run.js';
 import { planReading } from '../lib/voice.js';
+import { photoAltText } from '../lib/marker.js';
 import { SPEECH_RATES } from '../lib/settings.js';
 import { renderNotFound } from './notfound.js';
 import { openStuckSheet } from './stuck.js';
 import { renderDone } from './done.js';
+import { photoWithMarker } from './photo.js';
 
 const INTERACTIVE = new Set(['BUTTON', 'A', 'INPUT', 'TEXTAREA', 'SELECT', 'SUMMARY']);
 
@@ -111,11 +113,12 @@ export async function renderPlayer(route) {
     let photo = null;
     if (step.photo) {
       photoUrl = URL.createObjectURL(step.photo);
-      photo = h('button', {
-        type: 'button', class: 'photo-button', onclick: () => openPhoto(photoUrl, step.photoAlt || t('photoAltDefault', { n })),
-      },
-      h('img', { class: 'step-photo', src: photoUrl, alt: step.photoAlt || t('photoAltDefault', { n }) }),
-      h('span', { class: 'photo-hint', text: t('enlargePhoto') }));
+      const alt = photoAltText({
+        alt: step.photoAlt, defaultAlt: t('photoAltDefault', { n }), hasMarker: Boolean(step.marker), suffix: t('markerAltSuffix'),
+      });
+      photo = h('button', { type: 'button', class: 'photo-button', onclick: () => openPhoto(photoUrl, alt, step.marker) },
+        photoWithMarker({ src: photoUrl, alt, marker: step.marker }),
+        h('span', { class: 'photo-hint', text: t('enlargePhoto') }));
     }
 
     const caution = step.caution
@@ -123,6 +126,16 @@ export async function renderPlayer(route) {
       : null;
     const text = h('p', { class: 'step-text', lang, text: step.text });
     const notice = h('p', { class: 'notice', role: 'status', hidden: true });
+    const expected = (step.expected ?? '').trim();
+    const expectedCard = expected
+      ? h('section', { class: 'card expected', 'aria-labelledby': 'expected-heading' },
+        h('h3', { id: 'expected-heading', text: t('expectedHeading') }),
+        h('p', { class: 'expected-text', lang, text: expected }),
+        h('p', { class: 'expected-question', text: t('expectedQuestion') }),
+        h('div', { class: 'btn-row yes-no' },
+          h('button', { type: 'button', class: 'btn btn-primary', onclick: goNext, text: t('yes') }),
+          h('button', { type: 'button', class: 'btn btn-secondary', onclick: () => onStuck('mismatch'), text: t('no') })))
+      : null;
 
     const readBtn = h('button', { type: 'button', class: 'btn btn-secondary', text: t('readAloud') });
     let noteBtn = null;
@@ -143,11 +156,18 @@ export async function renderPlayer(route) {
 
     const show = (msg) => { notice.textContent = msg; notice.hidden = false; };
 
+    /** "What you should see now. ... Do you see this?" in the guide's language, read after the step text. */
+    function expectedSpeech() {
+      return expected
+        ? ` ${translate(lang, 'expectedHeading')}. ${expected} ${translate(lang, 'expectedQuestion')}`
+        : '';
+    }
+
     function readAloud() {
       stopMedia();
       const plan = planReading(voices, lang, false);
       if (plan.missingHindi) show(t('noHindiVoice'));
-      const spoken = `${step.caution ? `${translate(lang, 'cautionLabel')}. ` : ''}${step.text}`;
+      const spoken = `${step.caution ? `${translate(lang, 'cautionLabel')}. ` : ''}${step.text}${expectedSpeech()}`;
       const token = readingToken;
       const ok = speak(spoken, {
         lang: plan.lang, voice: plan.voice, rate: SPEECH_RATES[getSettings().speechSpeed],
@@ -161,17 +181,30 @@ export async function renderPlayer(route) {
       audioUrl = URL.createObjectURL(step.audio);
       audioEl = new Audio(audioUrl);
       const mine = audioEl;
-      mine.onended = () => { if (audioEl === mine) setNoteState(false); };
+      mine.onended = () => {
+        if (audioEl !== mine) return;
+        setNoteState(false);
+        // The recording covers the step text; read the "what you should see" part after it.
+        if (expected && speechSupported()) {
+          const token = readingToken;
+          const plan = planReading(voices, lang, false);
+          speak(expectedSpeech().trim(), {
+            lang: plan.lang, voice: plan.voice, rate: SPEECH_RATES[getSettings().speechSpeed],
+            onend: () => { if (token === readingToken) setReadState(false); },
+          });
+          setReadState(true);
+        }
+      };
       mine.onerror = () => { show(t('voiceNoteFailed')); setNoteState(false); };
       mine.play().then(() => setNoteState(true)).catch(() => { show(t('voiceNoteFailed')); setNoteState(false); });
     }
 
     const back = h('button', { type: 'button', class: 'btn btn-secondary', disabled: index === 0, onclick: goBack, text: t('back') });
     const next = h('button', { type: 'button', class: 'btn btn-primary btn-next', onclick: goNext, text: isLast ? t('doneFinish') : t('doneNext') });
-    const stuck = h('button', { type: 'button', class: 'btn btn-stuck', onclick: onStuck, text: t('imStuck') });
+    const stuck = h('button', { type: 'button', class: 'btn btn-stuck', onclick: () => onStuck(), text: t('imStuck') });
 
     stage.replaceChildren(...[
-      heading, progress, photo, caution, text, notice,
+      heading, progress, photo, caution, text, expectedCard, notice,
       h('div', { class: 'btn-row read-row' }, readBtn, noteBtn),
       h('div', { class: 'action-bar', role: 'group', 'aria-label': t('playerActions') },
         next, h('div', { class: 'action-bar-row' }, back, stuck)),
@@ -201,11 +234,12 @@ export async function renderPlayer(route) {
   function goNext() { if (index < total - 1) goTo(index + 1); else finish(); }
   function goBack() { if (index > 0) goTo(index - 1); }
 
-  async function onStuck() {
+  /** @param {'mismatch'} [reason] "No, I do not see it" counts as a stuck press and says what was expected */
+  async function onStuck(reason) {
     flush();
-    run = addStuck(run, index);
+    run = addStuck(run, index, Date.now(), reason);
     persist();
-    await openStuckSheet({ guide, index });
+    await openStuckSheet({ guide, index, notSeen: reason ? (steps[index].expected ?? '').trim() : '' });
   }
 
   function finish() {
@@ -224,11 +258,11 @@ export async function renderPlayer(route) {
     if (getSettings().autoRead) speak(done, { lang: getSettings().uiLang === 'hi' ? 'hi-IN' : 'en-IN', rate: SPEECH_RATES[getSettings().speechSpeed] });
   }
 
-  function openPhoto(url, alt) {
+  function openPhoto(url, alt, marker) {
     const dialog = h('dialog', { class: 'dialog photo-dialog', 'aria-label': alt });
     const close = () => { dialog.close(); dialog.remove(); };
     const closeBtn = h('button', { type: 'button', class: 'btn btn-primary', onclick: close, text: t('closePhoto') });
-    dialog.append(h('img', { class: 'photo-full', src: url, alt }), closeBtn);
+    dialog.append(photoWithMarker({ src: url, alt, marker, className: 'fit' }), closeBtn);
     dialog.addEventListener('cancel', (e) => { e.preventDefault(); close(); });
     document.body.append(dialog);
     dialog.showModal();

@@ -155,3 +155,57 @@ test('photo opens full screen with a visible close button', async (t) => {
   assert.equal(await page.locator('dialog[open]').count(), 0);
   assert.deepEqual(problems, []);
 });
+
+test('"What you should see now": read aloud after the step, Yes goes on, No opens the stuck sheet and logs it', async (t) => {
+  const { page, url, problems, close } = await launch(8230);
+  t.after(close);
+  await page.addInitScript(mockSpeech([{ lang: 'en-IN', name: 'x' }]));
+  await page.goto(url);
+  await page.getByRole('link', { name: 'Start' }).click();
+  await expectStep(page, 'Step 1 of 6');
+  assert.equal(await page.getByText('Do you see this?').count(), 0, 'only steps with expected text ask');
+  await page.getByRole('button', { name: 'Done, next' }).click();
+  await expectStep(page, 'Step 2 of 6');
+  await page.getByRole('heading', { name: 'What you should see now' }).waitFor();
+  await page.waitForFunction(() => window.__spoken.at(-1)?.text.includes('What you should see now'));
+  const spoken = await page.evaluate(() => window.__spoken.at(-1).text);
+  assert.ok(spoken.indexOf('Tap the link once') < spoken.indexOf('What you should see now'));
+  assert.match(spoken, /Do you see this\?$/);
+  assert.deepEqual(serious(await new AxeBuilder({ page }).analyze()).map((v) => v.id), []);
+
+  await page.getByRole('button', { name: 'No', exact: true }).click();
+  await page.getByRole('heading', { name: 'Need help?' }).waitFor();
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: 'Yes', exact: true }).click();
+  await expectStep(page, 'Step 3 of 6');
+
+  await page.getByRole('link', { name: 'Exit' }).click();
+  await page.getByRole('link', { name: 'Continue from step 3' }).waitFor();
+  const runs = await page.evaluate(() => new Promise((res) => {
+    const r = indexedDB.open('plainsteps'); r.onsuccess = () => {
+      const q = r.result.transaction('runs').objectStore('runs').getAll(); q.onsuccess = () => res(q.result);
+    };
+  }));
+  assert.deepEqual(runs[0].stuck.map((s) => [s.stepIndex, s.reason]), [[1, 'mismatch']]);
+  assert.deepEqual(problems, []);
+});
+
+test('answering No includes what was expected in the WhatsApp message', async (t) => {
+  const { page, url, problems, close } = await launch(8231);
+  t.after(close);
+  await page.goto(url + '#/helper');
+  await page.getByRole('link', { name: /Edit Sample/ }).click();
+  await page.getByLabel('Helper name').fill('Asha');
+  await page.getByLabel('Helper WhatsApp number').fill('98765 43210');
+  await page.getByRole('button', { name: 'Save guide' }).click();
+  await page.goto(url + '#/');
+  await page.getByRole('link', { name: 'Start' }).click();
+  await expectStep(page, 'Step 1 of 6');
+  await page.getByRole('button', { name: 'Done, next' }).click();
+  await page.getByRole('button', { name: 'No', exact: true }).click();
+  const href = await page.getByRole('link', { name: 'Send WhatsApp message to Asha' }).getAttribute('href');
+  const text = new URL(href).searchParams.get('text');
+  assert.match(text, /step 2 of 6/);
+  assert.match(text, /I do not see this on my screen: "A screen that says Join, or a preview of your own face\."$/);
+  assert.deepEqual(problems, []);
+});

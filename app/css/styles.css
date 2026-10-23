@@ -149,3 +149,41 @@ h1:focus { outline: none; }
     scroll-behavior: auto !important;
   }
 }
+
+/* ---- Guides, forms, dialogs ---- */
+.btn-big { min-height: 4rem; font-size: 1.15rem; width: 100%; }
+.btn-row { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+.btn[disabled] { opacity: 0.55; cursor: not-allowed; }
+.plain-list { list-style: none; margin: 0 0 1rem; padding: 0; }
+.guide-card h2 { font-size: 1.4rem; }
+
+label { display: block; font-weight: 600; margin-bottom: 0.25rem; }
+.choice label { display: block; margin: 0; font-weight: 400; }
+input[type="text"], input[type="tel"], textarea {
+  display: block;
+  width: 100%;
+  min-height: var(--tap);
+  padding: 0.6rem 0.75rem;
+  font: inherit;
+  color: var(--text);
+  background: var(--bg);
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+}
+textarea { resize: vertical; }
+[aria-invalid="true"] { border-color: var(--stuck); }
+.error-text { color: var(--stuck); font-weight: 600; margin: 0 0 0.25rem; }
+.error-card { border-color: var(--stuck); border-width: 2px; }
+.error-card ul { margin: 0; padding-left: 1.25rem; }
+.step-card h3 { font-size: 1.1rem; margin: 0 0 0.5rem; }
+.field > .hint { margin: 0 0 0.35rem; }
+
+dialog.dialog {
+  max-width: min(32rem, calc(100vw - 2rem));
+  padding: 1.25rem;
+  color: var(--text);
+  background: var(--bg);
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+}
+dialog.dialog::backdrop { background: rgba(0, 0, 0, 0.6); }

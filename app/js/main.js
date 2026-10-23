@@ -3,10 +3,13 @@
  * updates the page title, and moves focus to the view's h1 so screen readers start there.
  */
 import { parseHash } from './lib/route.js';
-import { applySettings, onSettingsChange, t } from './state.js';
+import { applySettings, getSettings, onSettingsChange, t } from './state.js';
 import { renderHome } from './views/home.js';
 import { renderSettings } from './views/settings.js';
+import { renderHelper } from './views/helper.js';
+import { renderBuilder } from './views/builder.js';
 import { renderNotFound } from './views/notfound.js';
+import { seedSampleOnFirstRun } from './platform/seed.js';
 
 const main = document.getElementById('main');
 
@@ -14,6 +17,8 @@ const main = document.getElementById('main');
 const views = {
   home: renderHome,
   settings: renderSettings,
+  helper: renderHelper,
+  build: renderBuilder,
 };
 
 /**
@@ -35,6 +40,7 @@ async function render({ keepFocus = false } = {}) {
 }
 
 applySettings();
+await seedSampleOnFirstRun(getSettings().uiLang);
 window.addEventListener('hashchange', () => render());
 // Re-render in place when the language changes; focus stays on the control the user used.
 onSettingsChange(() => render({ keepFocus: true }));

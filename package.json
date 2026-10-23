@@ -1,0 +1,12 @@
+{
+  "name": "plain-steps",
+  "version": "0.1.0",
+  "description": "Step-by-step guides that a family helper records once, so an older adult can follow them with big text and read-aloud.",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "serve": "node scripts/serve.mjs",
+    "test": "node --test \"tests/*.test.js\""
+  }
+}

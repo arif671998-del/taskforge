@@ -42,7 +42,7 @@ export async function renderBuilder(route) {
 
   /** Rebuild the form from `draft`, then focus the element with id `focusId`. */
   function rerender(focusId) {
-    root.replaceChildren(...build());
+    root.replaceChildren(...build().filter(Boolean));
     if (focusId) document.getElementById(focusId)?.focus();
   }
 
@@ -175,7 +175,7 @@ export async function renderBuilder(route) {
         h('button', { type: 'button', class: 'btn btn-primary btn-big', onclick: save, text: t('saveGuide') }),
         h('button', {
           type: 'button', class: 'btn btn-secondary',
-          onclick: async () => { if (await save()) location.hash = buildHash('play', draft.id); },
+          onclick: async () => { if (await save()) location.hash = `${buildHash('play', draft.id)}?preview=1`; },
           text: t('previewGuide'),
         }),
         h('a', { class: 'btn btn-secondary', href: '#/helper', text: t('backToGuides') }),

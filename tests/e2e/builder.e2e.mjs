@@ -22,6 +22,8 @@ test('home, helper hub, builder basics', async (t) => {
 
   // New guide: validation first
   await page.getByRole('link', { name: 'New guide' }).click();
+  await page.getByRole('heading', { level: 1, name: 'New guide' }).waitFor();
+  assert.doesNotMatch(await page.locator('main').innerText(), /\b(null|false|undefined)\b/);
   await page.getByRole('button', { name: 'Save guide' }).click();
   await page.getByText('Write a title for the guide.').first().waitFor();
   assert.equal(await page.evaluate(() => document.activeElement.id), 'error-summary');

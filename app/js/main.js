@@ -7,11 +7,14 @@ import { applySettings, getSettings, onSettingsChange, t } from './state.js';
 import { renderHome } from './views/home.js';
 import { renderSettings } from './views/settings.js';
 import { renderHelper } from './views/helper.js';
+import { renderPlayer } from './views/player.js';
 import { renderBuilder } from './views/builder.js';
 import { renderNotFound } from './views/notfound.js';
 import { seedSampleOnFirstRun } from './platform/seed.js';
 
 const main = document.getElementById('main');
+/** Cleanup function of the view on screen (the player stops audio and saves its position). */
+let cleanup = null;
 
 /** Route name -> render function. Later milestones add play, build and activity. */
 const views = {
@@ -19,15 +22,19 @@ const views = {
   settings: renderSettings,
   helper: renderHelper,
   build: renderBuilder,
+  play: renderPlayer,
 };
 
 /**
  * @param {{ keepFocus?: boolean }} [opts] keepFocus: re-render without stealing focus (language change)
  */
 async function render({ keepFocus = false } = {}) {
+  cleanup?.();
+  cleanup = null;
   const route = parseHash(location.hash);
   const view = (views[route.name] ?? renderNotFound)(route);
-  const { title, node } = await view;
+  const { title, node, cleanup: next } = await view;
+  cleanup = next ?? null;
   const focusedId = keepFocus ? document.activeElement?.id : null;
   main.replaceChildren(node);
   document.title = `${title} · ${t('appName')}`;

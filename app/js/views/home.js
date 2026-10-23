@@ -15,11 +15,12 @@ function guideCard(guide, progress) {
     h('p', { class: 'hint' },
       stepsLabel(guide.steps.length),
       guide.isSample ? ` · ${t('sampleBadge')}` : ''),
-    h('a', {
+    h('div', { class: 'stack' }, h('a', {
       class: 'btn btn-primary btn-big',
       href: buildHash('play', guide.id),
       text: resume ? t('continueFromStep', { n: progress.stepIndex + 1 }) : t('startGuide'),
-    }));
+    }),
+    resume && h('a', { class: 'btn btn-secondary btn-big', href: `${buildHash('play', guide.id)}?restart=1`, text: t('startAgain') })));
 }
 
 /**
